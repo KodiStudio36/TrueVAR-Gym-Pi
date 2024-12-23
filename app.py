@@ -1,16 +1,19 @@
 from flask import Flask, jsonify
-import RPi.GPIO as GPIO
 import subprocess, threading, time
 
 from cam import Cam
 
 app = Flask(__name__)
+is_raspberry = False
+
+if is_raspberry:
+    import RPi.GPIO as GPIO
+
+    BUTTON_PIN = 17
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setup(BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+
 pipeline = None  # Placeholder for the GStreamer pipeline
-
-
-BUTTON_PIN = 17
-GPIO.setmode(GPIO.BCM)
-GPIO.setup(BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
 cams = [Cam(), Cam()]
 is_streaming = False
@@ -23,10 +26,11 @@ def monitor_button():
             with app.app_context():
                 start_stream()
             time.sleep(0.2)
-            
-threading.Thread(target=monitor_button, daemon=True).start()
 
-@app.route('/start', methods=['GET'])
+if is_raspberry:
+    threading.Thread(target=monitor_button, daemon=True).start()
+
+@app.route('/stream/toggle', methods=['GET'])
 def start_stream():
     global is_streaming, process, cams
 
