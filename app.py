@@ -1,14 +1,30 @@
 from flask import Flask, jsonify
-import subprocess
+import RPi.GPIO as GPIO
+import subprocess, threading, time
 
 from cam import Cam
 
 app = Flask(__name__)
 pipeline = None  # Placeholder for the GStreamer pipeline
 
+
+BUTTON_PIN = 17
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+
 cams = [Cam(), Cam()]
 is_streaming = False
 process: subprocess.Popen = None
+
+def monitor_button():
+    while True:
+        if GPIO.input(BUTTON_PIN) == GPIO.LOW:
+            print("Button is pressed")
+            with app.app_context():
+                start_stream()
+            time.sleep(0.2)
+            
+threading.Thread(target=monitor_button, daemon=True).start()
 
 @app.route('/start', methods=['GET'])
 def start_stream():
@@ -31,6 +47,8 @@ def start_stream():
 
         process = subprocess.Popen(pipe, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         is_streaming = True
+        
+        print("aaa")
 
     else:
         process.terminate()
